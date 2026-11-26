@@ -2,6 +2,8 @@
 #include "Enemy.hpp"
 #include "../weapons/Weapon.hpp"
 #include <SFML/Graphics/CircleShape.hpp>
+#include <SFML/Graphics/Sprite.hpp>
+#include <algorithm>
 #include <cmath>
 
 Enemy spawnEnemy(int level) {
@@ -71,19 +73,16 @@ void updateEnemy(Enemy& e, float dt, V pp, int level, std::vector<Bullet>& bl) {
     }
 }
 
-void drawEnemies(sf::RenderWindow& window, const std::vector<Enemy>& en) {
-    // цвет по типу: 0 красный, 1 оранжевый, 2 фиолетовый, 3 босс
-    static const sf::Color cols[4] = {{220, 80, 80}, {230, 150, 60}, {170, 90, 220}, {200, 40, 120}};
+void drawEnemies(sf::RenderWindow& window, const std::vector<Enemy>& en,
+                 const std::array<sf::Texture, 4>& textures) {
     for (auto& e : en) {
-        float r = enemyHitRadius(e);
-        // форма зависит от типа: треугольник, ромб, шестиугольник, восьмиугольник (босс)
-        sf::CircleShape c(r, e.type == 0 ? 3 : e.type == 1 ? 4 : e.boss ? 8 : 6);
-        c.setOrigin({r, r});
-        c.setPosition(e.p);
-        c.setRotation(sf::degrees(e.boss ? 0.f : 180.f));
-        c.setFillColor(cols[e.type]);
-        c.setOutlineThickness(3);
-        c.setOutlineColor(sf::Color(255, 255, 255, 160));
-        window.draw(c);
+        const auto& texture = textures[e.boss ? 3 : std::clamp(e.type, 0, 2)];
+        sf::Sprite sprite(texture);
+        V size(texture.getSize());
+        sprite.setOrigin(size / 2.f);
+        float scale = (e.boss ? 200.f : 64.f) / std::max(size.x, size.y);
+        sprite.setScale({scale, scale});
+        sprite.setPosition(e.p);
+        window.draw(sprite);
     }
 }
