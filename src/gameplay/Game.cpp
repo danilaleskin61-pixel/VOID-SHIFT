@@ -13,10 +13,11 @@ constexpr float kPlayerHitRadius = 22.f;
 constexpr float kEnemyBulletRadius = 7.f;
 }
 
-Game::Game(const Textures& tex) : textures(tex), ship(tex.ship) {
+Game::Game(const Textures& tex, Sfx& s) : textures(tex), ship(tex.ship), sfx(s) {
     ship.setOrigin(V(tex.ship.getSize()) / 2.f);
     ship.setScale({0.2f, 0.2f});
     loadProgress();
+    sfx.play("gamestart", 80.f);
 }
 
 void Game::loadProgress() {
@@ -63,9 +64,9 @@ void Game::addFx(V p, float life, float r, sf::Color c) { fx.push_back({p, 0, li
 
 void Game::startWave() {
     bl.clear();
-    toSpawn = wave < 4 ? 5 + level * 2 : 0;   // волны 1-3: обычные враги
+    toSpawn = wave < 4 ? 5 + level * 2 : 0; // волны 1-3: обычные враги
     spawnT = 1.f;
-    if (wave == 4) en.push_back(spawnBoss(level));   // волна 4: босс
+    if (wave == 4) en.push_back(spawnBoss(level)); // волна 4: босс
 }
 
 void Game::resetRun() {
@@ -93,19 +94,24 @@ void Game::hurt(Damage damage) {
         }
         return;
     }
-    if (inv > 0 || rage > 0) return;   // неуязвимость / ярость
+    if (inv > 0 || rage > 0) return; // неуязвимость / ярость
+    
     lives--;
-    inv = 2.f;                         // 2 секунды мигания
+    sfx.play("loselife", 80.f); // <-- Звук потери жизни
+    inv = 2.f; // 2 секунды мигания
     addFx(pp, 0.5f, 50, sf::Color(255, 150, 40));
+    
     if (lives <= 0) {
         st = State::GameOver;
+        sfx.play("gameover", 100.f); // <-- Звук смерти (Game Over)
         if (!saveProgress()) std::cerr << "Could not save progress\n";
     }
 }
 
 void Game::onKill(const Enemy& e) {
     score += e.boss ? 500 : 10 * level;
-    addFx(e.p, e.boss ? 1.0f : 0.5f, e.boss ? 140.f : 45.f, sf::Color(255, 170, 50));   // взрыв врага
+    sfx.play("explosion", 70.f); // <-- Звук взрыва врага
+    addFx(e.p, e.boss ? 1.0f : 0.5f, e.boss ? 140.f : 45.f, sf::Color(255, 170, 50)); // взрыв врага
     if (e.boss) {
         coins += 30 + level * 10;
         if (!saveProgress()) std::cerr << "Could not save progress\n";
@@ -126,10 +132,10 @@ void Game::update(float dt) {
     // --- управление: стрелки или WASD ---
     using K = sf::Keyboard::Key;
     float sp = 380.f * dt;
-    if (sf::Keyboard::isKeyPressed(K::Left)  || sf::Keyboard::isKeyPressed(K::A)) pp.x -= sp;
+    if (sf::Keyboard::isKeyPressed(K::Left) || sf::Keyboard::isKeyPressed(K::A)) pp.x -= sp;
     if (sf::Keyboard::isKeyPressed(K::Right) || sf::Keyboard::isKeyPressed(K::D)) pp.x += sp;
-    if (sf::Keyboard::isKeyPressed(K::Up)    || sf::Keyboard::isKeyPressed(K::W)) pp.y -= sp;
-    if (sf::Keyboard::isKeyPressed(K::Down)  || sf::Keyboard::isKeyPressed(K::S)) pp.y += sp;
+    if (sf::Keyboard::isKeyPressed(K::Up) || sf::Keyboard::isKeyPressed(K::W)) pp.y -= sp;
+    if (sf::Keyboard::isKeyPressed(K::Down) || sf::Keyboard::isKeyPressed(K::S)) pp.y += sp;
     pp.x = std::clamp(pp.x, 40.f, W - 40.f);
     pp.y = std::clamp(pp.y, 40.f, H - 40.f);
     inv = std::max(0.f, inv - dt);
@@ -141,6 +147,7 @@ void Game::update(float dt) {
     if (fireT <= 0) {
         fireT = rage > 0 ? 0.09f : 0.18f;
         playerFire(bl, pp, wpn);
+        sfx.play("lasershot", 50.f); // <-- Звук выстрела
     }
 
     // --- спавн врагов текущей волны ---
@@ -175,7 +182,7 @@ void Game::update(float dt) {
             if (e.hp > 0 && len2(b.p, e.p) < r * r) {
                 b.dead = true;
                 e.hp -= (float)b.dmg;
-                addFx(b.p, 0.15f, 14, sf::Color(255, 240, 120));   // маленькая вспышка попадания
+                addFx(b.p, 0.15f, 14, sf::Color(255, 240, 120)); // маленькая вспышка попадания
                 break;
             }
         }
@@ -199,13 +206,14 @@ void Game::update(float dt) {
     for (auto& d : dr) if (len2(d.p, pp) < 36.f * 36.f) {
         if (d.kind == 0) {
             coins++;
+            sfx.play("coin", 60.f); // <-- Звук монеты
             if (!saveProgress()) std::cerr << "Could not save progress\n";
         }
-        else if (d.kind == 1) wpn = std::min(8, wpn + 1);     // апгрейд оружия, максимум 8
-        else if (d.kind == 2) lives = std::min(9, lives + 1);
-        else if (d.kind == 3) rage = 6.f;                      // ярость на 6 секунд
-        else if (d.kind == 4) barrier.collectEnergy();
-        d.p.y = 9999;                                         // помечаем на удаление
+        else if (d.kind == 1) { wpn = std::min(8, wpn + 1); sfx.play("upgrade", 70.f); } // апгрейд оружия
+        else if (d.kind == 2) { lives = std::min(9, lives + 1); sfx.play("extralife", 70.f); } // доп жизнь
+        else if (d.kind == 3) { rage = 6.f; sfx.play("upgrade", 70.f); } // ярость
+        else if (d.kind == 4) { barrier.collectEnergy(); sfx.play("coin", 80.f); } // энергия щита
+        d.p.y = 9999; // помечаем на удаление
     }
     dr.erase(std::remove_if(dr.begin(), dr.end(), [](const Drop& d) { return d.p.y > H + 20; }), dr.end());
 
@@ -243,7 +251,7 @@ void Game::draw(sf::RenderWindow& window) {
     // корабль мигает, пока действует неуязвимость
     if (st != State::GameOver && (inv <= 0 || std::fmod(inv, 0.2f) < 0.1f)) {
         ship.setPosition(pp);
-        ship.setColor(rage > 0 ? sf::Color(255, 140, 140) : sf::Color::White);   // в ярости краснеет
+        ship.setColor(rage > 0 ? sf::Color(255, 140, 140) : sf::Color::White); // в ярости краснеет
         window.draw(ship);
     }
     if (barrier.active() && st != State::GameOver) {
