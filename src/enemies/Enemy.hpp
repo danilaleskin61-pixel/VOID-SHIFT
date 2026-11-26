@@ -1,32 +1,14 @@
-// [enemies] Враги и босс: создание, поведение, отрисовка.
+// [textures] Загрузка всех картинок игры в одном месте.
 #pragma once
-#include "../common/Common.hpp"
-#include "../weapons/Bullet.hpp"
-#include <SFML/Graphics/RenderWindow.hpp>
-#include <vector>
+#include <SFML/Graphics/Texture.hpp>
+#include <array>
 
-struct Enemy {
-    V p;                  // позиция
-    int type;             // 0 — летит вниз, 1 — змейкой, 2 — стреляет, 3 — босс
-    float hp, maxhp;      // здоровье (задаётся при создании)
-    float t = 0;          // время жизни (для синусоид)
-    float shoot = 1.f;    // таймер до следующего выстрела
-    float bx = 0;         // базовая X-координата для покачивания
-    int atk = 0;          // счётчик атак босса (выбор паттерна)
-    bool boss = false;
+struct Textures {
+    sf::Texture space;   // фон космоса
+    sf::Texture ship;    // корабль игрока
+    // 0: interceptor, 1: weaver, 2: shooter, 3: boss.
+    std::array<sf::Texture, 4> enemies;
+
+    // false, если какого-то файла нет. Новые текстуры добавляй сюда.
+    bool load();
 };
-
-// Обычный враг случайного типа; чем выше level, тем больше hp.
-Enemy spawnEnemy(int level);
-
-// Босс 4-й волны: полоска hp и несколько видов атак.
-Enemy spawnBoss(int level);
-
-// Радиус попадания пули и радиус столкновения с кораблём игрока.
-float enemyHitRadius(const Enemy& e);
-float enemyRamRadius(const Enemy& e);
-
-// Движение и стрельба одного врага (пули добавляются в bl).
-void updateEnemy(Enemy& e, float dt, V playerPos, int level, std::vector<Bullet>& bl);
-
-void drawEnemies(sf::RenderWindow& window, const std::vector<Enemy>& en);
