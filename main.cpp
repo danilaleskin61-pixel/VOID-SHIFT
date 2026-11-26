@@ -4,6 +4,7 @@
 #include "gameplay/Game.hpp"
 #include "interface/Ui.hpp"
 #include "textures/Textures.hpp"
+#include "audio/Sfx.hpp"
 #include <SFML/Graphics.hpp>
 #include <algorithm>
 #include <filesystem>
@@ -38,7 +39,19 @@ int main() {
     if (!ui.loadFont()) return 1;
 
     Background background(tex.space);
-    Game game(tex);
+    Sfx sfx;
+    sfx.load("lasershot", "assets/sfx/lasershot.wav");
+    sfx.load("explosion", "assets/sfx/explosion.wav");
+    sfx.load("coin", "assets/sfx/coin.wav");
+    sfx.load("upgrade", "assets/sfx/upgrade.wav");
+    sfx.load("loselife", "assets/sfx/loselife.wav");
+    sfx.load("extralife", "assets/sfx/extralife.wav");
+    sfx.load("gameover", "assets/sfx/gameover.wav");
+    sfx.load("gamestart", "assets/sfx/gamestart.wav");
+    sfx.load("level", "assets/sfx/level.wav");
+    sfx.load("click", "assets/sfx/clickbutton.wav");
+
+    Game game(tex, sfx);
     sf::Clock clock;
 
     while (window.isOpen()) {
