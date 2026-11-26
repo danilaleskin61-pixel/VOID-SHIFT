@@ -5,6 +5,7 @@
 #include "../weapons/Bullet.hpp"
 #include <SFML/Graphics.hpp>
 #include <vector>
+#include "../audio/Sfx.hpp"
 
 // Экраны игры
 enum class State { Menu, Settings, Play, Pause, LevelDone, GameOver };
@@ -14,7 +15,7 @@ struct Fx   { V p; float t, life, r; sf::Color c; };     // вспышка/вз�
 
 class Game {
 public:
-    explicit Game(const sf::Texture& shipTex);
+    explicit Game(const sf::Texture& shipTex, Sfx& sfx);
 
     void resetRun();     // новая игра с нуля
     void nextLevel();    // переход на следующий уровень
@@ -44,4 +45,6 @@ private:
     std::vector<Fx> fx;
     int toSpawn = 0;
     float fireT = 0, spawnT = 0;
+
+    Sfx& sfx;
 };
